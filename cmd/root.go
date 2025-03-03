@@ -9,6 +9,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var fileName string
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "tasker",
@@ -50,5 +52,6 @@ func init() {
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
+	rootCmd.PersistentFlags().StringVarP(&fileName, "file", "f", "tasks.csv", "File to store tasks")
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
