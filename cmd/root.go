@@ -29,6 +29,7 @@ Examples:
 - Remove a task: tasker remove 1
 - View all tasks: tasker list
 - Mark a task as completed: tasker complete 1`,
+	TraverseChildren: true,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },
