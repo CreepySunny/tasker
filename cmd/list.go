@@ -22,17 +22,17 @@ This will show both completed and pending tasks.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		tasks, err := tasks.ListTasks(fileName, showAll)
 		if err != nil {
-			fmt.Printf("Error: %v\n", err)
+			fmt.Fprintln(os.Stderr, "Error: %w\n", err)
 			return
 		}
 
-		tabwriter := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', tabwriter.Debug)
+		tw := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', tabwriter.Debug)
 
 		for _, task := range tasks {
-			fmt.Fprintln(tabwriter, task.String())
+			fmt.Fprintln(tw, task.String())
 		}
 
-		tabwriter.Flush()
+		tw.Flush()
 	},
 }
 
