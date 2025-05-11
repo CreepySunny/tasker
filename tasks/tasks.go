@@ -56,13 +56,13 @@ func readTasksFromCSVData(data []byte) ([]Task, error) {
 
 	records, err := csvReader.ReadAll()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("malformed record: %w", err)
 	}
 
 	var tasks []Task
 	for _, record := range records {
 		if len(record) < 4 {
-			return nil, fmt.Errorf("malformed record: %v", record)
+			return nil, fmt.Errorf("malformed record: expected at least 4 fields but got %d in record: %v", len(record), record)
 		}
 
 		id, err := strconv.Atoi(record[0])
