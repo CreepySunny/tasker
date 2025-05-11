@@ -37,7 +37,9 @@ func loadFile(filepath string) (*os.File, error) {
 }
 
 func closeFile(f *os.File) error {
-	syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_UN); err != nil {
+		return fmt.Errorf("failed to unlock file: %w", err)
+	}
 	return f.Close()
 }
 
