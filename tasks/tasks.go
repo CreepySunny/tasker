@@ -45,7 +45,7 @@ func closeFile(f *os.File) error {
 
 func readTasksFromCSVData(data []byte) ([]Task, error) {
 	if len(data) == 0 {
-		return nil, fmt.Errorf("[Error]: Empty file")
+		return []Task{}, nil
 	}
 
 	csvReader := csv.NewReader(bytes.NewReader(data))
