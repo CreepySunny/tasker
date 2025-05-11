@@ -61,6 +61,10 @@ func readTasksFromCSVData(data []byte) ([]Task, error) {
 
 	var tasks []Task
 	for _, record := range records {
+		if len(record) < 4 {
+			return nil, fmt.Errorf("malformed record: %v", record)
+		}
+
 		id, err := strconv.Atoi(record[0])
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse ID: %w", err)
