@@ -9,29 +9,82 @@ import (
 	"time"
 )
 
-func TestParseTasksFromData(t *testing.T) {
-	t.Run("Read_Tasks_From_Data", func(t *testing.T) {
-		data := []byte(`ID,Description,CreatedAt,IsComplete
-1,My new task,2024-07-27T16:45:19-05:00,true
-2,Finish this video,2024-07-27T16:45:26-05:00,true
-3,Find a video editor,2024-07-27T16:45:31-05:00,false`)
-
-		got, err := readTasksFromCSVData(data)
-		want := []Task{
-			{ID: 1, Description: "My new task", CreatedAt: time.Date(2024, 7, 27, 16, 45, 19, 0, time.FixedZone("", -5*3600)), IsCompleted: true},
-			{ID: 2, Description: "Finish this video", CreatedAt: time.Date(2024, 7, 27, 16, 45, 26, 0, time.FixedZone("", -5*3600)), IsCompleted: true},
-			{ID: 3, Description: "Find a video editor", CreatedAt: time.Date(2024, 7, 27, 16, 45, 31, 0, time.FixedZone("", -5*3600)), IsCompleted: false},
-		}
-
-		if err != nil {
-			t.Errorf("[!] error [!]: %v", err)
-			return
-		}
-
-		if !reflect.DeepEqual(got, want) {
-			t.Errorf("got: %v, want: %v", got, want)
-		}
-	})
+func TestReadTasksFromCSVData(t *testing.T) {
+	cases := []struct {
+		name    string
+		data    []byte
+		wantErr string // substring to match in error, or "" for no error
+		want    []Task // expected parsed tasks
+	}{
+		{
+			name:    "Valid data",
+			data:    []byte("ID,Description,CreatedAt,IsComplete\n1,Test,2025-05-12T10:00:00Z,true"),
+			wantErr: "",
+			want: []Task{{
+				ID:          1,
+				Description: "Test",
+				CreatedAt:   time.Date(2025, 5, 12, 10, 0, 0, 0, time.UTC),
+				IsCompleted: true,
+			}},
+		},
+		{
+			name:    "Empty data",
+			data:    []byte{},
+			wantErr: "",
+			want:    nil,
+		},
+		{
+			name:    "Malformed record",
+			data:    []byte("ID,Description,CreatedAt,IsComplete\n1,Test,2025-05-12T10:00:00Z"),
+			wantErr: "wrong number of fields",
+			want:    nil,
+		},
+		{
+			name:    "Invalid ID",
+			data:    []byte("ID,Description,CreatedAt,IsComplete\nfoo,Test,2025-05-12T10:00:00Z,true"),
+			wantErr: "failed to parse ID",
+			want:    nil,
+		},
+		{
+			name:    "Invalid CreatedAt",
+			data:    []byte("ID,Description,CreatedAt,IsComplete\n1,Test,notatime,true"),
+			wantErr: "failed to parse CreatedAt",
+			want:    nil,
+		},
+		{
+			name:    "Invalid IsCompleted",
+			data:    []byte("ID,Description,CreatedAt,IsComplete\n1,Test,2025-05-12T10:00:00Z,notabool"),
+			wantErr: "failed to parse IsCompleted",
+			want:    nil,
+		},
+		{
+			name:    "Multiple valid tasks with timezone",
+			data:    []byte(`ID,Description,CreatedAt,IsComplete\n1,My new task,2024-07-27T16:45:19-05:00,true\n2,Finish this video,2024-07-27T16:45:26-05:00,true\n3,Find a video editor,2024-07-27T16:45:31-05:00,false`),
+			wantErr: "",
+			want: []Task{
+				{ID: 1, Description: "My new task", CreatedAt: time.Date(2024, 7, 27, 16, 45, 19, 0, time.FixedZone("", -5*3600)), IsCompleted: true},
+				{ID: 2, Description: "Finish this video", CreatedAt: time.Date(2024, 7, 27, 16, 45, 26, 0, time.FixedZone("", -5*3600)), IsCompleted: true},
+				{ID: 3, Description: "Find a video editor", CreatedAt: time.Date(2024, 7, 27, 16, 45, 31, 0, time.FixedZone("", -5*3600)), IsCompleted: false},
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := readTasksFromCSVData(tc.data)
+			if tc.wantErr == "" && err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+			if tc.wantErr != "" && (err == nil || !strings.Contains(err.Error(), tc.wantErr)) {
+				t.Errorf("expected error containing %q, got %v", tc.wantErr, err)
+			}
+			if tc.want != nil && !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("parsed tasks mismatch:\n got:  %#v\n want: %#v", got, tc.want)
+			}
+			if tc.want == nil && len(got) != 0 {
+				t.Errorf("expected no tasks, got: %#v", got)
+			}
+		})
+	}
 }
 
 func TestTaskString(t *testing.T) {
@@ -62,36 +115,6 @@ func TestLoadAndCloseFile(t *testing.T) {
 	err = closeFile(f)
 	if err != nil {
 		t.Errorf("closeFile() error = %v", err)
-	}
-}
-
-func TestReadTasksFromCSVData(t *testing.T) {
-	cases := []struct {
-		name    string
-		data    []byte
-		wantErr string // substring to match in error, or "" for no error
-		wantLen int
-	}{
-		{"Valid data", []byte("ID,Description,CreatedAt,IsComplete\n1,Test,2025-05-12T10:00:00Z,true"), "", 1},
-		{"Empty data", []byte{}, "", 0},
-		{"Malformed record", []byte("ID,Description,CreatedAt,IsComplete\n1,Test,2025-05-12T10:00:00Z"), "malformed record", 0},
-		{"Invalid ID", []byte("ID,Description,CreatedAt,IsComplete\nfoo,Test,2025-05-12T10:00:00Z,true"), "failed to parse ID", 0},
-		{"Invalid CreatedAt", []byte("ID,Description,CreatedAt,IsComplete\n1,Test,notatime,true"), "failed to parse CreatedAt", 0},
-		{"Invalid IsCompleted", []byte("ID,Description,CreatedAt,IsComplete\n1,Test,2025-05-12T10:00:00Z,notabool"), "failed to parse IsCompleted", 0},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			got, err := readTasksFromCSVData(tc.data)
-			if tc.wantErr == "" && err != nil {
-				t.Errorf("unexpected error: %v", err)
-			}
-			if tc.wantErr != "" && (err == nil || !strings.Contains(err.Error(), tc.wantErr)) {
-				t.Errorf("expected error containing %q, got %v", tc.wantErr, err)
-			}
-			if len(got) != tc.wantLen {
-				t.Errorf("expected %d tasks, got %d", tc.wantLen, len(got))
-			}
-		})
 	}
 }
 
