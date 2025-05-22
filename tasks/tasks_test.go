@@ -59,7 +59,7 @@ func TestReadTasksFromCSVData(t *testing.T) {
 		},
 		{
 			name:    "Multiple valid tasks with timezone",
-			data:    []byte(`ID,Description,CreatedAt,IsComplete\n1,My new task,2024-07-27T16:45:19-05:00,true\n2,Finish this video,2024-07-27T16:45:26-05:00,true\n3,Find a video editor,2024-07-27T16:45:31-05:00,false`),
+			data:    []byte("ID,Description,CreatedAt,IsComplete\n1,My new task,2024-07-27T16:45:19-05:00,true\n2,Finish this video,2024-07-27T16:45:26-05:00,true\n3,Find a video editor,2024-07-27T16:45:31-05:00,false"),
 			wantErr: "",
 			want: []Task{
 				{ID: 1, Description: "My new task", CreatedAt: time.Date(2024, 7, 27, 16, 45, 19, 0, time.FixedZone("", -5*3600)), IsCompleted: true},
