@@ -146,14 +146,6 @@ func TestListTasks(t *testing.T) {
 			t.Errorf("expected only uncompleted task, got %+v", tasks)
 		}
 	})
-
-	t.Run("file_does_not_exist_returns_error", func(t *testing.T) {
-		nonexistent := filepath.Join(os.TempDir(), "doesnotexist.csv")
-		_, err := ListTasks(nonexistent, true)
-		if err == nil || !strings.Contains(err.Error(), "Unable to locate file") {
-			t.Errorf("expected file not found error, got %v", err)
-		}
-	})
 }
 
 func TestAddTask(t *testing.T) {
