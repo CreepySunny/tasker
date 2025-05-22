@@ -109,6 +109,31 @@ func readTasksFromCSVData(data []byte) ([]Task, error) {
 	return tasks, nil
 }
 
+// AddTask appends a new task to the datasource (CSV file).
+func AddTask(filename string, task Task) error {
+	file, err := loadFile(filename)
+	if err != nil {
+		return fmt.Errorf("failed to open datasource for appending: %w", err)
+	}
+	defer closeFile(file)
+	// Move to end of file for appending
+	if _, err := file.Seek(0, io.SeekEnd); err != nil {
+		return fmt.Errorf("failed to seek to end of file: %w", err)
+	}
+	csvWriter := csv.NewWriter(file)
+	record := []string{
+		strconv.Itoa(task.ID),
+		task.Description,
+		task.CreatedAt.Format(time.RFC3339),
+		strconv.FormatBool(task.IsCompleted),
+	}
+	if err := csvWriter.Write(record); err != nil {
+		return fmt.Errorf("failed to write task: %w", err)
+	}
+	csvWriter.Flush()
+	return csvWriter.Error()
+}
+
 func ListTasks(filename string, all bool) ([]Task, error) {
 	// Check if file exists
 	if _, err := os.Stat(filename); errors.Is(err, os.ErrNotExist) {
