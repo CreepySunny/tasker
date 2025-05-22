@@ -110,7 +110,7 @@ func readTasksFromCSVData(data []byte) ([]Task, error) {
 }
 
 // AddTask appends a new task to the datasource (CSV file).
-func AddTask(filename string, task Task) error {
+func AddTask(filename string, description string) error {
 	file, err := loadFile(filename)
 	if err != nil {
 		return fmt.Errorf("failed to open datasource for appending: %w", err)
@@ -120,12 +120,28 @@ func AddTask(filename string, task Task) error {
 	if _, err := file.Seek(0, io.SeekEnd); err != nil {
 		return fmt.Errorf("failed to seek to end of file: %w", err)
 	}
+
+	// Determine next ID
+	file.Seek(0, io.SeekStart)
+	data, err := io.ReadAll(file)
+	if err != nil {
+		return fmt.Errorf("failed to read file for ID: %w", err)
+	}
+	tasks, err := readTasksFromCSVData(data)
+	if err != nil {
+		return fmt.Errorf("failed to parse tasks for ID: %w", err)
+	}
+	nextID := 1
+	if len(tasks) > 0 {
+		nextID = tasks[len(tasks)-1].ID + 1
+	}
+
 	csvWriter := csv.NewWriter(file)
 	record := []string{
-		strconv.Itoa(task.ID),
-		task.Description,
-		task.CreatedAt.Format(time.RFC3339),
-		strconv.FormatBool(task.IsCompleted),
+		strconv.Itoa(nextID),
+		description,
+		time.Now().Format(time.RFC3339),
+		"false",
 	}
 	if err := csvWriter.Write(record); err != nil {
 		return fmt.Errorf("failed to write task: %w", err)
