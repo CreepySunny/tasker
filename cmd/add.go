@@ -3,20 +3,25 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/CreepySunny/tasker/tasks"
 	"github.com/spf13/cobra"
 )
 
 var addCmd = &cobra.Command{
-	Use:   "add",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Use:   "add [task description]",
+	Short: "Add a new task to your to-do list",
+	Long: `Add a new task to your to-do list. Example:
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+  tasker add "Buy groceries"`,
+	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("add called")
+		description := args[0]
+		err := tasks.AddTask(fileName, description)
+		if err != nil {
+			fmt.Printf("Failed to add task: %v\n", err)
+			return
+		}
+		fmt.Println("Task added:", description)
 	},
 }
 
