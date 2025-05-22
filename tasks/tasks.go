@@ -23,12 +23,30 @@ func (t Task) String() string {
 	return fmt.Sprintf("%d\t%s\t%s\t%t", t.ID, t.Description, t.CreatedAt.Format(time.RFC3339), t.IsCompleted)
 }
 
+// ensureDataSource checks if the file exists, and if not, creates it with the correct header.
+func ensureDataSource(filepath string) error {
+	if _, err := os.Stat(filepath); errors.Is(err, os.ErrNotExist) {
+		file, err := os.OpenFile(filepath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+		if err != nil {
+			return fmt.Errorf("failed to create datasource: %w", err)
+		}
+		if _, err = file.WriteString("ID,Description,CreatedAt,IsComplete\n"); err != nil {
+			file.Close()
+			return fmt.Errorf("failed to write header: %w", err)
+		}
+		file.Close()
+	}
+	return nil
+}
+
 func loadFile(filepath string) (*os.File, error) {
+	if err := ensureDataSource(filepath); err != nil {
+		return nil, err
+	}
 	f, err := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE, os.ModePerm)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
-
 	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
 		_ = f.Close()
 		return nil, err
