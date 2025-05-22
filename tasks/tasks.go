@@ -135,12 +135,7 @@ func AddTask(filename string, task Task) error {
 }
 
 func ListTasks(filename string, all bool) ([]Task, error) {
-	// Check if file exists
-	if _, err := os.Stat(filename); errors.Is(err, os.ErrNotExist) {
-		return nil, fmt.Errorf("'%s': Unable to locate file", filename)
-	}
-
-	// Load and syslock file
+	// Load and syslock file (this will create the file if it doesn't exist)
 	file, err := loadFile(filename)
 	if err != nil {
 		return nil, err
