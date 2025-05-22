@@ -155,3 +155,85 @@ func TestListTasks(t *testing.T) {
 		}
 	})
 }
+
+func TestAddTask(t *testing.T) {
+	tmpDir := os.TempDir()
+	tmpFile := filepath.Join(tmpDir, "test_addtask.csv")
+	defer os.Remove(tmpFile)
+
+	testCases := []struct {
+		name      string
+		fileSetup func() string // returns filename
+		task      Task
+		wantErr   string
+		wantLines []string // expected lines in file after add (nil to skip check)
+	}{
+		{
+			name: "Add to new file (creates header)",
+			fileSetup: func() string {
+				os.Remove(tmpFile)
+				return tmpFile
+			},
+			task:      Task{ID: 7, Description: "Test Add", CreatedAt: time.Date(2025, 5, 12, 10, 0, 0, 0, time.UTC), IsCompleted: false},
+			wantErr:   "",
+			wantLines: []string{"ID,Description,CreatedAt,IsComplete", "7,Test Add,2025-05-12T10:00:00Z,false"},
+		},
+		{
+			name: "Add to file with only header",
+			fileSetup: func() string {
+				os.WriteFile(tmpFile, []byte("ID,Description,CreatedAt,IsComplete\n"), 0644)
+				return tmpFile
+			},
+			task:      Task{ID: 9, Description: "Header Only", CreatedAt: time.Date(2025, 5, 12, 12, 0, 0, 0, time.UTC), IsCompleted: true},
+			wantErr:   "",
+			wantLines: []string{"ID,Description,CreatedAt,IsComplete", "9,Header Only,2025-05-12T12:00:00Z,true"},
+		},
+		{
+			name: "Add to file with existing tasks",
+			fileSetup: func() string {
+				os.WriteFile(tmpFile, []byte("ID,Description,CreatedAt,IsComplete\n1,Old Task,2025-05-12T09:00:00Z,false\n"), 0644)
+				return tmpFile
+			},
+			task:      Task{ID: 10, Description: "New Task", CreatedAt: time.Date(2025, 5, 12, 13, 0, 0, 0, time.UTC), IsCompleted: false},
+			wantErr:   "",
+			wantLines: []string{"ID,Description,CreatedAt,IsComplete", "1,Old Task,2025-05-12T09:00:00Z,false", "10,New Task,2025-05-12T13:00:00Z,false"},
+		},
+		{
+			name: "Unwritable directory (should error)",
+			fileSetup: func() string {
+				return "/root/should_not_exist.csv"
+			},
+			task:      Task{ID: 11, Description: "Fail", CreatedAt: time.Now(), IsCompleted: false},
+			wantErr:   "failed to open datasource for appending",
+			wantLines: nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			filename := tc.fileSetup()
+			err := AddTask(filename, tc.task)
+			if tc.wantErr == "" && err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if tc.wantErr != "" && (err == nil || !strings.Contains(err.Error(), tc.wantErr)) {
+				t.Fatalf("expected error containing %q, got %v", tc.wantErr, err)
+			}
+			if tc.wantLines != nil && tc.wantErr == "" {
+				data, err := os.ReadFile(filename)
+				if err != nil {
+					t.Fatalf("failed to read file: %v", err)
+				}
+				lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+				if len(lines) != len(tc.wantLines) {
+					t.Fatalf("expected %d lines, got %d", len(tc.wantLines), len(lines))
+				}
+				for i, want := range tc.wantLines {
+					if lines[i] != want {
+						t.Errorf("line %d: got %q, want %q", i, lines[i], want)
+					}
+				}
+			}
+		})
+	}
+}
