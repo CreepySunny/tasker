@@ -5,6 +5,15 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Task Add",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "program": "${workspaceFolder}/main.go",
+            "env": {},
+            "args": ["add", "Finish Tasker"]
+        },
+        {
             "name": "Task List All",
             "type": "go",
             "request": "launch",
