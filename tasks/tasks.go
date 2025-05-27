@@ -12,6 +12,8 @@ import (
 	"time"
 )
 
+const csvHeader = "ID,Description,CreatedAt,IsComplete\n"
+
 type Task struct {
 	ID          int
 	Description string
@@ -30,7 +32,7 @@ func ensureDataSource(filepath string) error {
 		if err != nil {
 			return fmt.Errorf("failed to create datasource: %w", err)
 		}
-		if _, err = file.WriteString("ID,Description,CreatedAt,IsComplete\n"); err != nil {
+		if _, err = file.WriteString(csvHeader); err != nil {
 			file.Close()
 			return fmt.Errorf("failed to write header: %w", err)
 		}
