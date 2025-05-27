@@ -115,7 +115,12 @@ func AddTask(filename string, description string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open datasource for appending: %w", err)
 	}
-	defer closeFile(file)
+	defer func() {
+		if err := closeFile(file); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to close file: %v\n", err)
+		}
+	}()
+
 	// Move to end of file for appending
 	if _, err := file.Seek(0, io.SeekEnd); err != nil {
 		return fmt.Errorf("failed to seek to end of file: %w", err)
