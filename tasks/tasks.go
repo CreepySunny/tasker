@@ -232,7 +232,17 @@ func CompleteTask(filename string, taskID string) error {
 			break
 		}
 	}
-	// Write updated tasks back to file
+	// Truncate file before writing updated tasks
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		return fmt.Errorf("failed to seek to start of file: %w", err)
+	}
+	if err := file.Truncate(0); err != nil {
+		return fmt.Errorf("failed to truncate file: %w", err)
+	}
+	// Write header
+	if _, err := file.WriteString(csvHeader); err != nil {
+		return fmt.Errorf("failed to write header: %w", err)
+	}
 	csvWriter := csv.NewWriter(file)
 	for _, task := range tasks {
 		record := []string{
