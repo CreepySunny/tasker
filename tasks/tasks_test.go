@@ -234,3 +234,97 @@ func TestAddTask(t *testing.T) {
 		})
 	}
 }
+
+func readAllTasks(t *testing.T, filename string) []Task {
+	t.Helper()
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		t.Fatalf("failed to read file: %v", err)
+	}
+	tasks, err := readTasksFromCSVData(data)
+	if err != nil {
+		t.Fatalf("failed to parse tasks: %v", err)
+	}
+	return tasks
+}
+
+func TestCompleteTask(t *testing.T) {
+	tmpFile := filepath.Join(os.TempDir(), "test_completetask.csv")
+	defer os.Remove(tmpFile)
+
+	t.Run("completes a single task", func(t *testing.T) {
+		content := csvHeader + "1,Task1,2025-05-12T10:00:00Z,false\n"
+		if err := os.WriteFile(tmpFile, []byte(content), 0644); err != nil {
+			t.Fatalf("failed to write temp file: %v", err)
+		}
+		err := CompleteTask(tmpFile, "1")
+		if err != nil {
+			t.Fatalf("CompleteTask error: %v", err)
+		}
+		tasks := readAllTasks(t, tmpFile)
+		if len(tasks) != 1 {
+			t.Fatalf("expected 1 task, got %d", len(tasks))
+		}
+		if !tasks[0].IsCompleted {
+			t.Errorf("expected task to be completed, got IsCompleted=false")
+		}
+	})
+
+	t.Run("does not complete non-existent task", func(t *testing.T) {
+		content := csvHeader + "1,Task1,2025-05-12T10:00:00Z,false\n"
+		if err := os.WriteFile(tmpFile, []byte(content), 0644); err != nil {
+			t.Fatalf("failed to write temp file: %v", err)
+		}
+		err := CompleteTask(tmpFile, "2")
+		if err != nil {
+			t.Fatalf("CompleteTask error: %v", err)
+		}
+		tasks := readAllTasks(t, tmpFile)
+		if tasks[0].IsCompleted {
+			t.Errorf("expected task to remain uncompleted, got IsCompleted=true")
+		}
+	})
+
+	t.Run("completes only the specified task", func(t *testing.T) {
+		content := csvHeader +
+			"1,Task1,2025-05-12T10:00:00Z,false\n" +
+			"2,Task2,2025-05-12T11:00:00Z,false\n"
+		if err := os.WriteFile(tmpFile, []byte(content), 0644); err != nil {
+			t.Fatalf("failed to write temp file: %v", err)
+		}
+		err := CompleteTask(tmpFile, "2")
+		if err != nil {
+			t.Fatalf("CompleteTask error: %v", err)
+		}
+		tasks := readAllTasks(t, tmpFile)
+		if !tasks[1].IsCompleted {
+			t.Errorf("expected task 2 to be completed, got IsCompleted=false")
+		}
+		if tasks[0].IsCompleted {
+			t.Errorf("expected task 1 to remain uncompleted, got IsCompleted=true")
+		}
+	})
+
+	t.Run("invalid task ID returns error", func(t *testing.T) {
+		content := csvHeader + "1,Task1,2025-05-12T10:00:00Z,false\n"
+		if err := os.WriteFile(tmpFile, []byte(content), 0644); err != nil {
+			t.Fatalf("failed to write temp file: %v", err)
+		}
+		err := CompleteTask(tmpFile, "notanumber")
+		if err == nil || !strings.Contains(err.Error(), "failed to parse task ID") {
+			t.Errorf("expected error for invalid task ID, got: %v", err)
+		}
+	})
+
+	t.Run("file does not exist returns error", func(t *testing.T) {
+		badFile := filepath.Join(os.TempDir(), "does_not_exist.csv")
+		os.Remove(badFile)
+		err := CompleteTask(badFile, "1")
+		if err != nil {
+			// Should not error, as ensureDataSource creates the file
+			if !strings.Contains(err.Error(), "failed to parse tasks") {
+				t.Errorf("unexpected error: %v", err)
+			}
+		}
+	})
+}
