@@ -192,3 +192,56 @@ func ListTasks(filename string, all bool) ([]Task, error) {
 	// Return uncompleted list
 	return uncompletedTasks, nil
 }
+
+func CompleteTask(filename string, taskID string) error {
+	// Load and syslock file
+	file, err := loadFile(filename)
+	if err != nil {
+		return fmt.Errorf("failed to open datasource for updating: %w", err)
+	}
+	defer func() {
+		if err := closeFile(file); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to close file: %v\n", err)
+		}
+	}()
+
+	// Read data from file
+	data, err := io.ReadAll(file)
+	if err != nil {
+		return fmt.Errorf("failed to read file: %w", err)
+	}
+	tasks, err := readTasksFromCSVData(data)
+	if err != nil {
+		return fmt.Errorf("failed to parse tasks: %w", err)
+	}
+	id, err := strconv.Atoi(taskID)
+	if err != nil {
+		return fmt.Errorf("failed to parse task ID: %w", err)
+	}
+	for i, task := range tasks {
+		if task.ID == id {
+			tasks[i].IsCompleted = true
+			tasks[i].CreatedAt = time.Now() // Update the CreatedAt to now
+			break
+		}
+	}
+	// Write updated tasks back to file
+	csvWriter := csv.NewWriter(file)
+	for _, task := range tasks {
+		record := []string{
+			strconv.Itoa(task.ID),
+			task.Description,
+			task.CreatedAt.Format(time.RFC3339),
+			strconv.FormatBool(task.IsCompleted),
+		}
+		if err := csvWriter.Write(record); err != nil {
+			return fmt.Errorf("failed to write task: %w", err)
+		}
+	}
+	csvWriter.Flush()
+	if err := csvWriter.Error(); err != nil {
+		return fmt.Errorf("failed to flush csv writer: %w", err)
+	}
+	// If we reach here, the task was successfully marked as completed
+	return nil
+}
