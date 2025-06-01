@@ -262,3 +262,77 @@ func CompleteTask(filename string, taskID string) error {
 	// If we reach here, the task was successfully marked as completed
 	return nil
 }
+
+func DeleteTask(filename string, taskID string) error {
+	// Load and syslock file
+	file, err := loadFile(filename)
+	if err != nil {
+		return fmt.Errorf("failed to open datasource for deleting: %w", err)
+	}
+
+	defer func() {
+		if err := closeFile(file); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to close file: %v\n", err)
+		}
+	}()
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		return fmt.Errorf("failed to read file: %w", err)
+	}
+
+	tasks, err := readTasksFromCSVData(data)
+	if err != nil {
+		return fmt.Errorf("failed to parse tasks: %w", err)
+	}
+
+	id, err := strconv.Atoi(taskID)
+	if err != nil {
+		return fmt.Errorf("failed to parse task ID: %w", err)
+	}
+
+	for i, task := range tasks {
+		if task.ID == id {
+			// Remove the task from the slice
+			tasks = append(tasks[:i], tasks[i+1:]...)
+			break
+		}
+	}
+
+	// Truncate file before writing updated tasks
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		return fmt.Errorf("failed to seek to start of file: %w", err)
+	}
+
+	if err := file.Truncate(0); err != nil {
+		return fmt.Errorf("failed to truncate file: %w", err)
+	}
+
+	// Write header
+	if _, err := file.WriteString(csvHeader); err != nil {
+		return fmt.Errorf("failed to write header: %w", err)
+	}
+
+	csvWriter := csv.NewWriter(file)
+
+	for _, task := range tasks {
+		record := []string{
+			strconv.Itoa(task.ID),
+			task.Description,
+			task.CreatedAt.Format(time.RFC3339),
+			strconv.FormatBool(task.IsCompleted),
+		}
+		if err := csvWriter.Write(record); err != nil {
+			return fmt.Errorf("failed to write task: %w", err)
+		}
+	}
+
+	csvWriter.Flush()
+
+	if err := csvWriter.Error(); err != nil {
+		return fmt.Errorf("failed to flush csv writer: %w", err)
+	}
+
+	// If we reach here, the task was successfully deleted
+	return nil
+}
